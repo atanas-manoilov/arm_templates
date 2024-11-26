@@ -1,0 +1,60 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "ACR_name": {
+      "type": "String",
+      "defaultValue": "amanilov02103",
+      "metadata": {
+        "description": "Name of the Azure Container Registry."
+      }
+    },
+    "location": {
+      "type": "String",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Location of the Azure Container Registry."
+      }
+    },
+    "sku": {
+      "type": "String",
+      "allowedValues": ["Basic", "Standard", "Premium"],
+      "defaultValue": "Standard",
+      "metadata": {
+        "description": "SKU of the Azure Container Registry."
+      }
+    },
+    "admin_enabled": {
+      "type": "Bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Specifies whether the admin user is enabled on the ACR."
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.ContainerRegistry/registries",
+      "apiVersion": "2023-11-01-preview",
+      "name": "[parameters('ACR_name')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "adminUserEnabled": "[parameters('admin_enabled')]"
+      },
+      "sku": {
+        "name": "[parameters('sku')]",
+        "tier": "[parameters('sku')]"
+      }
+    }
+  ],
+  "outputs": {
+    "acrName": {
+      "type": "String",
+      "value": "[parameters('ACR_name')]"
+    },
+    "acrVaultId": {
+      "type": "String",
+      "value": "[resourceId('Microsoft.ContainerRegistry/registries', parameters('ACR_name'))]"
+    }
+  }
+}

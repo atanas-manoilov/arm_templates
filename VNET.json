@@ -1,0 +1,98 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "virtualNetworkName": {
+      "type": "string",
+      "defaultValue": "amanoilov-vnet",
+      "metadata": {
+        "description": "Name of the Virtual Network."
+      }
+    },
+    "addressSpace": {
+      "type": "array",
+      "defaultValue": [
+        "10.5.0.0/16"
+      ],
+      "metadata": {
+        "description": "Address space for the Virtual Network."
+      }
+    },
+    "subnets": {
+      "type": "array",
+      "defaultValue": [
+        {
+          "name": "amanoilov-aks-subnet",
+          "addressPrefix": "10.5.1.0/24"
+        },
+        {
+          "name": "amanoilov-kv-subnet",
+          "addressPrefix": "10.5.2.0/24"
+        },
+        {
+          "name": "amanoilov-private-endpoint-subnet",
+          "addressPrefix": "10.5.3.0/24",
+          "serviceEndpoints": [
+            {
+              "service": "Microsoft.KeyVault",
+              "locations": ["*"]
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "description": "Subnets configuration for the Virtual Network."
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Network/virtualNetworks",
+      "apiVersion": "2023-11-01",
+      "name": "[parameters('virtualNetworkName')]",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": "[parameters('addressSpace')]"
+        }
+      },
+      "dependsOn": []
+    },
+    {
+      "type": "Microsoft.Network/virtualNetworks/subnets",
+      "apiVersion": "2023-11-01",
+      "name": "[concat(parameters('virtualNetworkName'), '/', parameters('subnets')[copyIndex()].name)]",
+      "copy": {
+        "name": "subnetCopy",
+        "count": "[length(parameters('subnets'))]"
+      },
+      "properties": {
+        "addressPrefix": "[parameters('subnets')[copyIndex()].addressPrefix]",
+        "serviceEndpoints": "[if(contains(parameters('subnets')[copyIndex()], 'serviceEndpoints'), parameters('subnets')[copyIndex()].serviceEndpoints, json('[]'))]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworkName'))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "vnetId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworkName'))]",
+      "metadata": {
+        "description": "The resource ID of the Virtual Network."
+      }
+    },
+    "subnetIds": {
+      "type": "object",
+      "value": {
+        "amanoilov-aks-subnet": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('virtualNetworkName'), 'amanoilov-aks-subnet')]",
+        "amanoilov-kv-subnet": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('virtualNetworkName'), 'amanoilov-kv-subnet')]",
+        "amanoilov-private-endpoint-subnet": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('virtualNetworkName'), 'amanoilov-private-endpoint-subnet')]"
+      },
+      "metadata": {
+        "description": "The resource IDs of the subnets in the Virtual Network."
+      }
+    }
+  }
+}

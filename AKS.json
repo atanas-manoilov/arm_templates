@@ -1,0 +1,145 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "The location of the AKS cluster."
+      }
+    },
+    "clusterName": {
+      "type": "string",
+      "defaultValue": "aks-cluster",
+      "metadata": {
+        "description": "The name of the AKS cluster."
+      }
+    },
+    "dnsPrefix": {
+      "type": "string",
+      "defaultValue": "aks-dns",
+      "metadata": {
+        "description": "The DNS prefix for the AKS cluster."
+      }
+    },
+    "agentCount": {
+      "type": "int",
+      "defaultValue": 2,
+      "metadata": {
+        "description": "The number of agent nodes in the node pool."
+      }
+    },
+    "agentVMSize": {
+      "type": "string",
+      "defaultValue": "Standard_D2_v4",
+      "metadata": {
+        "description": "The VM size of the agent nodes."
+      }
+    },
+    "kubernetesVersion": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "The version of Kubernetes to deploy. Leave empty for the default version."
+      }
+    },
+    "sshPublicKey": {
+      "type": "string",
+      "defaultValue": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCTTO5ZFKWfkHzOYBo2jqCeuZfzEuxF34w+ATdi9qy9v4qYfpKyvlgQuoaxzdZCQ9p8Bnz6nBNi3yXaTvaeQvgJ4D6HFhboNQS9V4f8btiPiM+yDwBFBWIqSmUPN5LwYH8FDEanagz3h96ByR1q4PPET4guOMXlLAHggSLRVORNn1IstNEFKK92gN72Xs02S7c/4tYovMSZ7u3NJ9bvFSWrA4y1CdN/u2QBcL/Y1v0CitIiJLAID5TycpxU6cFHdg//s2iO0t1GN8uStI6HBGfsnj/FtBlpxHcSWFzGD+bt++pNCnJ6xkjR6xnEfJUkRB3m7FfhDWx9FFnvQZ72OjV0MppoafPU4NFdRVePqLecMaJTbRHEJ1pz9pRocueehHP2YjvrcyfE0nBVpec7/uJNBYI7U0HjH6Vaj4j9KW4zomEfl+l3l/mYiQm1GaIj4gN4OI+OmTt96FX0qQ83UU1H7N/6OdmORWidx9gZCxyAFsECKDM+jfzSofQhGihddN8uijZh5Z/mb+hEQ55Frl4p5vhjMKEygW0DEja4vsacJmHcOXw4Dy1UQAbwUIo66d23CMJLxh42/OChJS6jLOlP1Y1JsYObf06/UjbwgJazet+++rjAk/ynO2Xl6Gyz5GWt/MxaXWJCJVZ2z0ugQbH1VVB+rZ/LerOICkKtnr9WQQ== nasko@D7440",
+      "metadata": {
+        "description": "SSH public key for cluster admin access."
+      }
+    },
+    "subscriptionId": {
+      "type": "string",
+      "defaultValue": "28f02a8b-306a-4c98-a425-14a6725747a6",
+      "metadata": {
+        "description": "The subscription ID for the resources."
+      }
+    },
+    "vnetResourceGroupName": {
+      "type": "string",
+      "defaultValue": "my_vnet_rg",
+      "metadata": {
+        "description": "The resource group name where the virtual network resides."
+      }
+    },
+    "vnetName": {
+      "type": "string",
+      "defaultValue": "amanoilov-vnet",
+      "metadata": {
+        "description": "The name of the virtual network."
+      }
+    },
+    "subnetName": {
+      "type": "string",
+      "defaultValue": "amanoilov-aks-subnet",
+      "metadata": {
+        "description": "The name of the subnet for the AKS node pool."
+      }
+    }
+  },
+  "variables": {
+    "vnetSubnetID": "[concat('/subscriptions/', parameters('subscriptionId'), '/resourceGroups/', parameters('vnetResourceGroupName'), '/providers/Microsoft.Network/virtualNetworks/', parameters('vnetName'), '/subnets/', parameters('subnetName'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.ContainerService/managedClusters",
+      "apiVersion": "2023-07-01",
+      "name": "[parameters('clusterName')]",
+      "location": "[parameters('location')]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "kubernetesVersion": "[parameters('kubernetesVersion')]",
+        "dnsPrefix": "[parameters('dnsPrefix')]",
+        "agentPoolProfiles": [
+          {
+            "name": "nodepool1",
+            "count": "[parameters('agentCount')]",
+            "vmSize": "[parameters('agentVMSize')]",
+            "osType": "Linux",
+            "type": "VirtualMachineScaleSets",
+            "vnetSubnetID": "[variables('vnetSubnetID')]",
+            "mode": "System"
+          }
+        ],
+        "linuxProfile": {
+            "adminUsername": "nasko",
+            "ssh": {
+              "publicKeys": [
+                {
+                  "keyData": "[parameters('sshPublicKey')]"
+                }
+              ]
+            }
+        },
+        "networkProfile": {
+          "networkPlugin": "azure",
+          "networkPluginMode": "overlay",
+          "serviceCidr": "192.168.0.0/24",
+          "dnsServiceIP": "192.168.0.10",
+          "podCidr": "172.16.0.0/16",
+          "loadBalancerSku": "standard",
+          "outboundType": "loadBalancer"
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "aksClusterName": {
+      "type": "string",
+      "value": "[parameters('clusterName')]"
+    },
+    "kubeletUAMIClientId": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.ContainerService/managedClusters', parameters('clusterName')), '2023-07-01').identityProfile.kubeletidentity.clientId]"
+    },
+    "kubeletUAMIResourceId": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.ContainerService/managedClusters', parameters('clusterName')), '2023-07-01').identityProfile.kubeletidentity.resourceId]"
+    }
+  }
+}
