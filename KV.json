@@ -1,0 +1,126 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "resources": [
+    {
+      "type": "Microsoft.KeyVault/vaults",
+      "apiVersion": "2022-07-01",
+      "name": "[parameters('keyVaultName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "sku": {
+          "family": "A",
+          "name": "[parameters('keyVaultSku')]"
+        },
+        "tenantId": "[parameters('tenantId')]",
+        "accessPolicies": [],
+        "networkAcls": {
+          "bypass": "None",
+          "defaultAction": "Deny",
+          "ipRules": "[parameters('allowedIpRules')]",
+          "virtualNetworkRules": [
+            {
+              "id": "[parameters('privateEndpointSubnetId')]"
+            }
+          ]
+        },
+        "enablePurgeProtection": true,
+        "enableSoftDelete": true,
+        "publicNetworkAccess": "[parameters('publicNetworkAccessEnabled')]"
+      },
+      "tags": {
+        "environment": "[parameters('environment')]"
+      }
+    },
+    {
+      "type": "Microsoft.Network/privateDnsZones",
+      "apiVersion": "2018-09-01",
+      "name": "privatelink.vaultcore.azure.net",
+      "location": "global",
+      "tags": {
+        "environment": "[parameters('environment')]"
+      }
+    },
+    {
+      "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+      "apiVersion": "2018-09-01",
+      "name": "[concat('privatelink.vaultcore.azure.net/', parameters('dnsLinkName'))]",
+      "location": "global",
+      "properties": {
+        "virtualNetwork": {
+          "id": "[parameters('vnetId')]"
+        },
+        "registrationEnabled": false
+      }
+    },
+    {
+      "type": "Microsoft.Network/privateEndpoints",
+      "apiVersion": "2021-03-01",
+      "name": "[concat(parameters('keyVaultName'), '-pe')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "subnet": {
+          "id": "[parameters('privateEndpointSubnetId')]"
+        },
+        "privateLinkServiceConnections": [
+          {
+            "name": "[concat(parameters('keyVaultName'), '-connection')]",
+            "properties": {
+              "privateLinkServiceId": "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
+              "groupIds": ["vault"],
+              "requestMessage": "Auto-Approved"
+            }
+          }
+        ],
+        "customDnsConfigs": [
+          {
+            "properties": {
+              "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.vaultcore.azure.net')]"
+            }
+          }
+        ]
+      },
+      "tags": {
+        "environment": "[parameters('environment')]"
+      }
+    }
+  ],
+  "parameters": {
+    "keyVaultName": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string"
+    },
+    "keyVaultSku": {
+      "type": "string",
+      "allowedValues": ["standard", "premium"],
+      "defaultValue": "standard"
+    },
+    "tenantId": {
+      "type": "string"
+    },
+    "allowedIpRules": {
+      "type": "array",
+      "defaultValue": []
+    },
+    "publicNetworkAccessEnabled": {
+      "type": "string",
+      "allowedValues": ["Enabled", "Disabled"],
+      "defaultValue": "Disabled"
+    },
+    "privateEndpointSubnetId": {
+      "type": "string"
+    },
+    "environment": {
+      "type": "string"
+    },
+    "vnetId": {
+      "type": "string"
+    },
+    "dnsLinkName": {
+      "type": "string",
+      "defaultValue": "kv-dns-link"
+    }
+  }
+}

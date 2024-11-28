@@ -1,5 +1,5 @@
 {
-  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
     "vnetResourceGroupName": {
@@ -55,7 +55,7 @@
     },
     {
       "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2021-04-01",
+      "apiVersion": "2024-03-01",
       "name": "aksDeployment",
       "resourceGroup": "[parameters('aksResourceGroupName')]",
       "properties": {
@@ -66,7 +66,7 @@
         },
         "parameters": {
           "vnetSubnetID": {
-            "value": "[reference(resourceId(parameters('vnetResourceGroupName'), 'Microsoft.Resources/deployments', 'vnetDeployment'), '2021-04-01').outputs.subnetIds.value['amanoilov-aks-subnet']]"
+            "value": "[reference(resourceId(subscription().subscriptionId, parameters('vnetResourceGroupName'), 'Microsoft.Resources/deployments', 'vnetDeployment'), '2021-04-01').outputs.subnetIds.value['amanoilov-aks-subnet']]"
           }
         }
       }
