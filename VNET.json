@@ -26,12 +26,8 @@
           "addressPrefix": "10.5.1.0/24"
         },
         {
-          "name": "amanoilov-kv-subnet",
-          "addressPrefix": "10.5.2.0/24"
-        },
-        {
           "name": "amanoilov-private-endpoint-subnet",
-          "addressPrefix": "10.5.3.0/24",
+          "addressPrefix": "10.5.2.0/24",
           "serviceEndpoints": [
             {
               "service": "Microsoft.KeyVault",
@@ -87,7 +83,6 @@
       "type": "object",
       "value": {
         "amanoilov-aks-subnet": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('virtualNetworkName'), 'amanoilov-aks-subnet')]",
-        "amanoilov-kv-subnet": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('virtualNetworkName'), 'amanoilov-kv-subnet')]",
         "amanoilov-private-endpoint-subnet": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('virtualNetworkName'), 'amanoilov-private-endpoint-subnet')]"
       },
       "metadata": {
