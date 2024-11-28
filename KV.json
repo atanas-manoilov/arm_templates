@@ -1,6 +1,48 @@
 {
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
+  "parameters": {
+    "privateEndpointSubnetId": {
+      "type": "string"
+    },
+    "vnetId": {
+      "type": "string"
+    },
+    "allowedIps": {
+    "type": "array",
+    "defaultValue": [
+      { "value": "89.102.176.88" }
+    ]
+  },
+    "keyVaultName": {
+      "defaultValue": "amanoilov-kv",
+      "type": "string"
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Location"
+      }
+    },
+    "keyVaultSku": {
+      "type": "string",
+      "allowedValues": ["standard", "premium"],
+      "defaultValue": "standard"
+    },
+    "tenantId": {
+      "type": "string",
+      "defaultValue": "830c9ea6-1c8e-411c-8bf0-f519b37fd808"
+    },
+    "dnsLinkName": {
+      "type": "string",
+      "defaultValue": "kv-dns-link"
+    },
+    "environment": {
+      "type": "string",
+      "defaultValue": "production"
+    }
+  },
   "resources": [
     {
       "type": "Microsoft.KeyVault/vaults",
@@ -14,49 +56,30 @@
         },
         "tenantId": "[parameters('tenantId')]",
         "accessPolicies": [],
+        "enablePurgeProtection": true,
+        "enableSoftDelete": true,
         "networkAcls": {
-          "bypass": "None",
           "defaultAction": "Deny",
-          "ipRules": "[parameters('allowedIpRules')]",
+          "bypass": "None",
+          "ipRules": "[parameters('allowedIps')]",
           "virtualNetworkRules": [
             {
               "id": "[parameters('privateEndpointSubnetId')]"
             }
           ]
-        },
-        "enablePurgeProtection": true,
-        "enableSoftDelete": true,
-        "publicNetworkAccess": "[parameters('publicNetworkAccessEnabled')]"
+        }
       },
       "tags": {
         "environment": "[parameters('environment')]"
       }
     },
     {
-      "type": "Microsoft.Network/privateDnsZones",
-      "apiVersion": "2018-09-01",
-      "name": "privatelink.vaultcore.azure.net",
-      "location": "global",
-      "tags": {
-        "environment": "[parameters('environment')]"
-      }
-    },
-    {
-      "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
-      "apiVersion": "2018-09-01",
-      "name": "[concat('privatelink.vaultcore.azure.net/', parameters('dnsLinkName'))]",
-      "location": "global",
-      "properties": {
-        "virtualNetwork": {
-          "id": "[parameters('vnetId')]"
-        },
-        "registrationEnabled": false
-      }
-    },
-    {
       "type": "Microsoft.Network/privateEndpoints",
       "apiVersion": "2021-03-01",
       "name": "[concat(parameters('keyVaultName'), '-pe')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+      ],
       "location": "[parameters('location')]",
       "properties": {
         "subnet": {
@@ -71,56 +94,57 @@
               "requestMessage": "Auto-Approved"
             }
           }
-        ],
-        "customDnsConfigs": [
-          {
-            "properties": {
-              "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.vaultcore.azure.net')]"
-            }
-          }
         ]
       },
       "tags": {
         "environment": "[parameters('environment')]"
       }
+    },
+    {
+      "type": "Microsoft.Network/privateDnsZones",
+      "apiVersion": "2018-09-01",
+      "name": "privatelink.vaultcore.azure.net",
+      "location": "global",
+      "properties": {},
+      "tags": {
+        "environment": "[parameters('environment')]"
+      }
+    },
+    {
+      "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+      "apiVersion": "2018-09-01",
+      "name": "[concat('privatelink.vaultcore.azure.net/', parameters('dnsLinkName'))]",
+      "location": "global",
+      "properties": {
+        "virtualNetwork": {
+          "id": "[parameters('vnetId')]"
+        },
+        "registrationEnabled": false
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.vaultcore.azure.net')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+      "apiVersion": "2023-11-01",
+      "name": "[concat(parameters('keyVaultName'), '-pe/keyvault-dns-zone-group')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/privateEndpoints', concat(parameters('keyVaultName'), '-pe'))]",
+        "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.vaultcore.azure.net')]"
+      ],
+      "properties": {
+        "privateDnsZoneConfigs": [
+          {
+            "name": "keyvault-dns",
+            "properties": {
+              "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.vaultcore.azure.net')]"
+            }
+          }
+        ]
+      }
     }
-  ],
-  "parameters": {
-    "keyVaultName": {
-      "type": "string"
-    },
-    "location": {
-      "type": "string"
-    },
-    "keyVaultSku": {
-      "type": "string",
-      "allowedValues": ["standard", "premium"],
-      "defaultValue": "standard"
-    },
-    "tenantId": {
-      "type": "string"
-    },
-    "allowedIpRules": {
-      "type": "array",
-      "defaultValue": []
-    },
-    "publicNetworkAccessEnabled": {
-      "type": "string",
-      "allowedValues": ["Enabled", "Disabled"],
-      "defaultValue": "Disabled"
-    },
-    "privateEndpointSubnetId": {
-      "type": "string"
-    },
-    "environment": {
-      "type": "string"
-    },
-    "vnetId": {
-      "type": "string"
-    },
-    "dnsLinkName": {
-      "type": "string",
-      "defaultValue": "kv-dns-link"
-    }
-  }
+
+
+  ]
 }

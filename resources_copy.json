@@ -9,13 +9,6 @@
         "description": "The name of the resource group for the VNet."
       }
     },
-    "kvResourceGroupName": {
-      "type": "string",
-      "defaultValue": "my_kv_rg",
-      "metadata": {
-        "description": "The name of the resource group for the ACR."
-      }
-    },
     "acrResourceGroupName": {
       "type": "string",
       "defaultValue": "my_acr_rg",
@@ -58,27 +51,6 @@
           "contentVersion": "1.0.0.0"
         },
         "parameters": {}
-      }
-    },
-    {
-      "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2021-04-01",
-      "name": "kvDeployment",
-      "resourceGroup": "[parameters('kvResourceGroupName')]",
-      "properties": {
-        "mode": "Incremental",
-        "templateLink": {
-          "uri": "https://raw.githubusercontent.com/atanas-manoilov/arm_templates/refs/heads/main/KV.json",
-          "contentVersion": "1.0.0.0"
-        },
-        "parameters": {
-          "privateEndpointSubnetId": {
-            "value": "[reference(resourceId(subscription().subscriptionId, parameters('vnetResourceGroupName'), 'Microsoft.Resources/deployments', 'vnetDeployment'), '2021-04-01').outputs.subnetIds.value['amanoilov-private-endpoint-subnet']]"
-          },
-          "vnetID": {
-            "value": "[reference(resourceId(subscription().subscriptionId, parameters('vnetResourceGroupName'), 'Microsoft.Resources/deployments', 'vnetDeployment'), '2021-04-01').outputs.vnetId.value]"
-          }
-        }
       }
     },
     {

@@ -31,6 +31,13 @@
       "name": "my_vnet_rg",
       "location": "[parameters('location')]",
       "properties": {}
+    },    
+    {
+      "type": "Microsoft.Resources/resourceGroups",
+      "apiVersion": "2023-07-01",
+      "name": "my_kv_rg",
+      "location": "[parameters('location')]",
+      "properties": {}
     }
   ]
 }

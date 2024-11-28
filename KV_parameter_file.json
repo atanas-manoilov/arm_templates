@@ -1,0 +1,12 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "privateEndpointSubnetId": {
+      "value": "/subscriptions/28f02a8b-306a-4c98-a425-14a6725747a6/resourceGroups/my_vnet_rg/providers/Microsoft.Network/virtualNetworks/amanoilov-vnet/subnets/amanoilov-private-endpoint-subnet"
+    },
+    "vnetId": {
+      "value": "/subscriptions/28f02a8b-306a-4c98-a425-14a6725747a6/resourceGroups/my_vnet_rg/providers/Microsoft.Network/virtualNetworks/amanoilov-vnet"
+    }
+  }
+}
