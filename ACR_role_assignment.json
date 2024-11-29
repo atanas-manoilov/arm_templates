@@ -1,0 +1,30 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "acrResourceID": {
+      "type": "string",
+      "metadata": {
+        "description": "The Resource ID of the Azure Container Registry."
+      }
+    },
+    "principalId": {
+      "type": "string",
+      "metadata": {
+        "description": "The Principal ID of the User Assigned Managed Identity (UAMI)."
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2020-04-01-preview",
+      "name": "[guid(parameters('acrResourceID'), parameters('principalId'), 'AcrPull')]",
+      "scope": "[parameters('acrResourceID')]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')]",
+        "principalId": "[parameters('principalId')]"
+      }
+    }
+  ]
+}

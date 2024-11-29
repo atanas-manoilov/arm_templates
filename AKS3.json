@@ -56,9 +56,28 @@
       "metadata": {
         "description": "The ID of the subnet for the AKS node pool."
       }
+    },
+    "kubeletIdentityName": {
+      "type": "string",
+      "defaultValue": "kubelet-uami",
+      "metadata": {
+        "description": "The name of the User Assigned Managed Identity for the kubelet."
+      }
+    },
+    "acrResourceID": {
+      "type": "string",
+      "metadata": {
+        "description": "The Resource ID of the Azure Container Registry for role assignment."
+      }
     }
   },
   "resources": [
+    {
+      "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+      "apiVersion": "2018-11-30",
+      "name": "[parameters('kubeletIdentityName')]",
+      "location": "[parameters('location')]"
+    },
     {
       "type": "Microsoft.ContainerService/managedClusters",
       "apiVersion": "2023-07-01",
@@ -78,18 +97,24 @@
             "osType": "Linux",
             "type": "VirtualMachineScaleSets",
             "vnetSubnetID": "[parameters('vnetSubnetID')]",
-            "mode": "System"
+            "mode": "System",
+            "identity": {
+              "type": "UserAssigned",
+              "userAssignedIdentities": {
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('kubeletIdentityName'))]": {}
+              }
+            }
           }
         ],
         "linuxProfile": {
-            "adminUsername": "nasko",
-            "ssh": {
-              "publicKeys": [
-                {
-                  "keyData": "[parameters('sshPublicKey')]"
-                }
-              ]
-            }
+          "adminUsername": "nasko",
+          "ssh": {
+            "publicKeys": [
+              {
+                "keyData": "[parameters('sshPublicKey')]"
+              }
+            ]
+          }
         },
         "networkProfile": {
           "networkPlugin": "azure",
@@ -100,7 +125,24 @@
           "loadBalancerSku": "standard",
           "outboundType": "loadBalancer"
         }
-      }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('kubeletIdentityName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2020-04-01-preview",
+      "name": "[guid(parameters('acrResourceID'), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('kubeletIdentityName')), 'AcrPull')]",
+      "scope": "[parameters('acrResourceID')]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')]",
+        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('kubeletIdentityName')), '2018-11-30').principalId]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('kubeletIdentityName'))]",
+        "[resourceId('Microsoft.ContainerService/managedClusters', parameters('clusterName'))]"
+      ]
     }
   ],
   "outputs": {
@@ -110,15 +152,15 @@
     },
     "kubeletUAMIClientId": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.ContainerService/managedClusters', parameters('clusterName')), '2023-07-01').identityProfile.kubeletidentity.clientId]"
+      "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('kubeletIdentityName')), '2018-11-30').clientId]"
     },
     "kubeletUAMIObjectId": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.ContainerService/managedClusters', parameters('clusterName')), '2023-07-01').identityProfile.kubeletidentity.objectId]"
+      "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('kubeletIdentityName')), '2018-11-30').principalId]"
     },
     "kubeletUAMIResourceId": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.ContainerService/managedClusters', parameters('clusterName')), '2023-07-01').identityProfile.kubeletidentity.resourceId]"
+      "value": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('kubeletIdentityName'))]"
     }
   }
 }
