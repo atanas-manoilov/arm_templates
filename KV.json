@@ -15,7 +15,7 @@
     ]
   },
     "keyVaultName": {
-      "defaultValue": "amanoilov-kv2",
+      "defaultValue": "amanoilov-kv3",
       "type": "string"
     },
     "location": {

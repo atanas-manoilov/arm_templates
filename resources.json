@@ -112,10 +112,10 @@
         },
         "parameters": {
           "acrResourceID": {
-            "value": "[reference(resourceId(subscription().subscriptionId, parameters('acrResourceGroupName'), 'Microsoft.Resources/deployments', 'acrDeployment'), '2024-03-01').outputs.acrVaultId]"
+            "value": "[reference(resourceId(subscription().subscriptionId, parameters('acrResourceGroupName'), 'Microsoft.Resources/deployments', 'acrDeployment'), '2024-03-01').outputs.acrVaultId.value]"
           },
           "principalId": {
-            "value": "[reference(resourceId(subscription().subscriptionId, parameters('aksResourceGroupName'), 'Microsoft.Resources/deployments', 'askDeployment'), '2024-03-01').outputs.kubeletUAMIObjectId]"
+            "value": "[reference(resourceId(subscription().subscriptionId, parameters('aksResourceGroupName'), 'Microsoft.Resources/deployments', 'aksDeployment'), '2024-03-01').outputs.kubeletUAMIObjectId.value]"
           }
         }
       }
@@ -124,7 +124,7 @@
   "outputs": {
     "aksClusterName": {
       "type": "string",
-      "value": "[reference(resourceId(subscription().subscriptionId, parameters('aksResourceGroupName'), 'Microsoft.Resources/deployments', 'askDeployment'), '2024-03-01').outputs.aksClusterName]"
+      "value": "[reference(resourceId(subscription().subscriptionId, parameters('aksResourceGroupName'), 'Microsoft.Resources/deployments', 'aksDeployment'), '2024-03-01').outputs.aksClusterName.value]"
     }
   }
 }
