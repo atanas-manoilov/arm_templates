@@ -34,7 +34,7 @@
   "resources": [
     {
       "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2021-04-01",
+      "apiVersion": "2024-03-01",
       "name": "vnetDeployment",
       "resourceGroup": "[parameters('vnetResourceGroupName')]",
       "properties": {
@@ -48,7 +48,7 @@
     },
     {
       "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2021-04-01",
+      "apiVersion": "2024-03-01",
       "name": "acrDeployment",
       "resourceGroup": "[parameters('acrResourceGroupName')]",
       "properties": {
@@ -62,7 +62,7 @@
     },
     {
       "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2021-04-01",
+      "apiVersion": "2024-03-01",
       "name": "kvDeployment",
       "resourceGroup": "[parameters('kvResourceGroupName')]",
       "properties": {
@@ -94,10 +94,37 @@
         },
         "parameters": {
           "vnetSubnetID": {
-            "value": "[reference(resourceId(subscription().subscriptionId, parameters('vnetResourceGroupName'), 'Microsoft.Resources/deployments', 'vnetDeployment'), '2021-04-01').outputs.subnetIds.value['amanoilov-aks-subnet']]"
+            "value": "[reference(resourceId(subscription().subscriptionId, parameters('vnetResourceGroupName'), 'Microsoft.Resources/deployments', 'vnetDeployment'), '2024-03-01').outputs.subnetIds.value['amanoilov-aks-subnet']]"
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2024-03-01",
+      "name": "ACR_role_Deployment",
+      "resourceGroup": "[parameters('acrResourceGroupName')]",
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "https://raw.githubusercontent.com/atanas-manoilov/arm_templates/refs/heads/main/ACR_role_assignment.json",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "acrResourceID": {
+            "value": "[reference(resourceId(subscription().subscriptionId, parameters('acrResourceGroupName'), 'Microsoft.Resources/deployments', 'acrDeployment'), '2024-03-01').outputs.acrVaultId]"
+          },
+          "principalId": {
+            "value": "[reference(resourceId(subscription().subscriptionId, parameters('aksResourceGroupName'), 'Microsoft.Resources/deployments', 'askDeployment'), '2024-03-01').outputs.kubeletUAMIObjectId]"
           }
         }
       }
     }
-  ]
+  ],
+  "outputs": {
+    "aksClusterName": {
+      "type": "string",
+      "value": "[reference(resourceId(subscription().subscriptionId, parameters('aksResourceGroupName'), 'Microsoft.Resources/deployments', 'askDeployment'), '2024-03-01').outputs.aksClusterName]"
+    }
+  }
 }
