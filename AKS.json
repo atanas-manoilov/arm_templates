@@ -108,6 +108,10 @@
       "type": "string",
       "value": "[parameters('clusterName')]"
     },
+    "aksClusterResourceGroup": {
+      "type": "string",
+      "value": "[resourceGroup().name]"
+    },
     "kubeletUAMIClientId": {
       "type": "string",
       "value": "[reference(resourceId('Microsoft.ContainerService/managedClusters', parameters('clusterName')), '2023-07-01').identityProfile.kubeletidentity.clientId]"
