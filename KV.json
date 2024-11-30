@@ -86,7 +86,7 @@
     },
     {
       "type": "Microsoft.Network/privateEndpoints",
-      "apiVersion": "2021-03-01",
+      "apiVersion": "2023-11-01",
       "name": "[concat(variables('keyVaultNameWithSuffix'), '-pe')]",
       "dependsOn": [
         "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultNameWithSuffix'))]"
