@@ -3,7 +3,7 @@
   "contentVersion": "1.0.0.0",
   "parameters": {
     "KeyVaultName": {
-      "defaultValue": "amanoilov-kv",
+      "defaultValue": "amanoilov-kv-880408",
       "type": "string"
     },
     "vnetResourceGroupName": {
