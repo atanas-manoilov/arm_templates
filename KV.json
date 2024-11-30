@@ -40,13 +40,6 @@
     "environment": {
       "type": "string",
       "defaultValue": "production"
-    },
-    "currentDateTime": {
-      "type": "string",
-      "defaultValue": "[utcNow()]",
-      "metadata": {
-        "description": "Current timestamp for generating unique names."
-      }
     }
   },
   "resources": [
