@@ -1,0 +1,399 @@
+#trigger:
+#  branches:
+#    include:
+#      - main  # Specify the branch to trigger the pipeline
+trigger: none
+
+parameters:
+  - name: azureServiceConnection
+    displayName: 'Azure Service Connection'
+    type: string
+    default: 'ServiceConnectionToKrasiAz'
+
+  - name: storage_rg
+    displayName: 'Storage Resource Group'
+    type: string
+    default: 'terraform_rg'
+
+  - name: storage_acc
+    displayName: 'Storage Account'
+    type: string
+    default: 'terraform1storage1acc'
+
+variables:
+  TF_VERSION: '1.9.8'
+  REPO_URL: "https://dev.azure.com/atanasmanoilov/HelmCharts/_git/HelmCharts"
+
+pool:
+  name: "self-hosted-pmx"  # Replace with the actual name of your self-hosted agent pool
+
+stages:
+  - stage: Deploy_AKS
+    displayName: "Deploy AKS Cluster via Terraform"
+    jobs:
+      - job: deploy
+        displayName: "Install Terraform, Initialize, Plan, Apply, and Import Certificate to KV"
+        steps:
+          # Step: Checkout the code
+          - checkout: self
+            clean: true
+
+          # Step: TR Install
+          - task: TerraformInstaller@1
+            displayName: "TR Install"
+            inputs:
+              terraformVersion: $(TF_VERSION)
+
+          # Step: TR Init
+          - task: TerraformTaskV4@4
+            displayName: "TR Init"
+            inputs:
+              provider: 'azurerm'
+              command: 'init'
+              backendServiceArm: ${{ parameters.azureServiceConnection }}
+              workingDirectory: '$(System.DefaultWorkingDirectory)/provision-aks-with-modules'
+              backendAzureRmResourceGroupName: ${{ parameters.storage_rg }}
+              backendAzureRmStorageAccountName: ${{ parameters.storage_acc }}
+              backendAzureRmContainerName: 'tfstate'
+              backendAzureRmKey: 'terraform.tfstate'
+
+          # Step: TR Plan -target
+          - task: TerraformTaskV4@4
+            #condition: eq(1, 2) # This condition will always evaluate to false
+            displayName: "TR Plan -target"
+            inputs:
+              provider: 'azurerm'
+              command: 'plan'
+              environmentServiceNameAzureRM: ${{ parameters.azureServiceConnection }}
+              workingDirectory: '$(System.DefaultWorkingDirectory)/provision-aks-with-modules'
+              commandOptions: > 
+                -out=tfplan-target 
+                -target=module.random_pet-aks 
+                -target=module.random_pet-kv 
+                -target=module.random_pet-vnet 
+                -target=module.random_pet-acr 
+                -target=module.resource_group-aks 
+                -target=module.resource_group-kv 
+                -target=module.resource_group-vnet 
+                -target=module.resource_group-acr 
+                -target=module.aks_cluster 
+                -target=module.key-vault 
+                -target=module.vnet 
+                -target=module.acr
+
+          # Step: TR Apply -target
+          - task: TerraformTaskV4@4
+            #condition: eq(1, 2) # This condition will always evaluate to false
+            displayName: "TR Apply -target"
+            inputs:
+              provider: 'azurerm'
+              command: 'apply'
+              environmentServiceNameAzureRM: ${{ parameters.azureServiceConnection }}
+              workingDirectory: '$(System.DefaultWorkingDirectory)/provision-aks-with-modules'
+              commandOptions: '-auto-approve tfplan-target'
+
+          # Step: TR Plan all
+          - task: TerraformTaskV4@4
+            #condition: eq(1, 2) # This condition will always evaluate to false
+            displayName: "TR Plan all"
+            inputs:
+              provider: 'azurerm'
+              command: 'plan'
+              environmentServiceNameAzureRM: ${{ parameters.azureServiceConnection }}
+              workingDirectory: '$(System.DefaultWorkingDirectory)/provision-aks-with-modules'
+              commandOptions: '-out=tfplan-remaining'
+
+          # Step: TR Apply all
+          - task: TerraformTaskV4@4
+            #condition: eq(1, 2) # This condition will always evaluate to false
+            displayName: "TR Apply all"
+            inputs:
+              provider: 'azurerm'
+              command: 'apply'
+              environmentServiceNameAzureRM: ${{ parameters.azureServiceConnection }}
+              workingDirectory: '$(System.DefaultWorkingDirectory)/provision-aks-with-modules'
+              commandOptions: '-auto-approve tfplan-remaining'
+
+          # Step: TR Capture Outputs
+          - task: TerraformTaskV4@4
+            name: tfOutput
+            displayName: "TR Capture Outputs"
+            inputs:
+              provider: 'azurerm'
+              command: 'output'
+              environmentServiceNameAzureRM: ${{ parameters.azureServiceConnection }}
+              workingDirectory: '$(System.DefaultWorkingDirectory)/provision-aks-with-modules'
+              outputTo: 'json'  # Store outputs in JSON
+
+
+          # Step: Download SSL Certificate
+          - task: DownloadSecureFile@1
+            displayName: "Download SSL Certificate"
+            inputs:
+              secureFile: my-certificate.pfx
+
+          # Step: Install Azure CLI
+          - task: Bash@3
+            displayName: "Install Azure CLI"
+            inputs:
+              targetType: 'inline'
+              script: |
+                echo "Installing Azure CLI..."
+                curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+                az version
+
+          # Step: Install jq 
+          - task: Bash@3
+            displayName: "Install jq"
+            inputs:
+              targetType: 'inline'
+              script: |
+                echo "Updating package list and ensuring jq is installed..."
+                sudo apt-get update -y
+                sudo apt-get install -y jq
+                echo "jq installation complete. Version:"
+                jq --version
+
+          # Step: Import Certificate to Key Vault
+          - task: AzureCLI@2
+            displayName: "Import Cert to Key Vault"
+            env:
+              CERT_PASSWORD: $(certPassword)  # Map the secret variable as an environment variable
+              JSON_OUTPUT_PATH: $(tfOutput.jsonOutputVariablesPath)  # Path from Terraform output task
+            inputs:
+              azureSubscription: ${{ parameters.azureServiceConnection }}
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                # Extract Key Vault Name from JSON file
+                KEYVAULT_NAME=$(jq -r '.kv_name.value' "$JSON_OUTPUT_PATH")
+
+                echo "Importing certificate into Key Vault: $KEYVAULT_NAME"
+                
+                # Define certificate path and password
+                CERT_PATH=$(Agent.TempDirectory)/my-certificate.pfx
+
+                echo "Importing certificate into Key Vault: $KEYVAULT_NAME"
+
+                # Import certificate into Key Vault
+                az keyvault certificate import \
+                  --vault-name $KEYVAULT_NAME \
+                  --name "my-ssl-cert" \
+                  --file $CERT_PATH \
+                  --password $CERT_PASSWORD
+
+          # Step: Install kubectl       
+          - task: Bash@3
+            displayName: "Install kubectl"
+            inputs:
+              targetType: 'inline'
+              script: |
+                echo "Installing kubectl..."
+                curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+                chmod +x kubectl
+                sudo mv kubectl /usr/local/bin/
+                echo "kubectl version:"
+                kubectl version --client
+
+          # Step: Retrieve AKS Credentials
+          - task: AzureCLI@2
+            displayName: "Retrieve AKS Credentials"
+            env:
+              JSON_OUTPUT_PATH: $(tfOutput.jsonOutputVariablesPath)
+            inputs:
+              azureSubscription: ${{ parameters.azureServiceConnection }}
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                # Extract AKS cluster name from Terraform outputs
+                AKS_CLUSTER_NAME=$(jq -r '.aks_cluster_name.value' "$JSON_OUTPUT_PATH")
+                AKS_RESOURCE_GROUP=$(jq -r '.aks_resource_group.value' "$JSON_OUTPUT_PATH")
+
+                echo "Getting credentials for AKS Cluster: $AKS_CLUSTER_NAME in Resource Group: $AKS_RESOURCE_GROUP"
+
+                # Retrieve credentials
+                az aks get-credentials --resource-group $AKS_RESOURCE_GROUP --name $AKS_CLUSTER_NAME --overwrite-existing
+
+                # Verify kubectl access
+                kubectl get nodes
+
+          # Step: Install Helm
+          - task: HelmInstaller@1 #built in DevOps; no need to install seprately from marketplace
+            displayName: "Install Helm"
+            inputs:
+              helmVersion: 'latest'
+
+          # Step: Add Helm Repository
+          - script: |
+              echo "Adding Helm repository..."
+              helm repo add csi-secrets-store-provider-azure https://azure.github.io/secrets-store-csi-driver-provider-azure/charts
+              helm repo update
+            displayName: "Add Helm Repository"
+
+          # Step: Install CSI driver only if it's missing
+          - script: |
+              echo "Checking if the Helm release 'csi-azure-provider' is already installed..."
+              RELEASE_NAME="csi-azure-provider"
+              NAMESPACE="kube-system"
+              
+              # Check if the release exists
+              if helm list --namespace $NAMESPACE --filter "^$RELEASE_NAME\$" | grep -q $RELEASE_NAME; then
+                echo "Helm release '$RELEASE_NAME' already exists in namespace '$NAMESPACE'. Skipping installation."
+              else
+                echo "Helm release '$RELEASE_NAME' does not exist. Proceeding with installation..."
+                helm install $RELEASE_NAME csi-secrets-store-provider-azure/csi-secrets-store-provider-azure --namespace $NAMESPACE
+              fi
+            displayName: "Install CSI driver if Not Installed"
+
+          # Step: Clone HelmCharts Repository
+          - task: Bash@3
+            displayName: "Clone HelmCharts Repository"
+            inputs:
+              targetType: inline
+              script: |
+                echo "Cloning HelmCharts repository..."
+                git clone https://$(GIT_PAT)@dev.azure.com/atanasmanoilov/HelmCharts/_git/HelmCharts $(System.DefaultWorkingDirectory)/HelmCharts
+                echo "Repository cloned successfully."
+
+          # Step: Package Helm Chart            
+          - task: Bash@3
+            displayName: "Package Helm Charts"
+            inputs:
+              targetType: inline
+              script: |
+                echo "Packaging Helm charts..."
+                
+                # Define directories for the charts
+                PRE_REQS_DIR=$(System.DefaultWorkingDirectory)/HelmCharts/pre-reqs
+                NGINX_INGRESS_DIR=$(System.DefaultWorkingDirectory)/HelmCharts/nginx-ingress
+                OUTPUT_DIR=$(System.DefaultWorkingDirectory)/helm_output
+
+                # Create output directory
+                mkdir -p $OUTPUT_DIR
+
+                # Package pre-reqs chart
+                echo "Packaging pre-reqs chart..."
+                helm package $PRE_REQS_DIR -d $OUTPUT_DIR
+
+                # Package nginx-ingress chart
+                echo "Packaging nginx-ingress chart..."
+                helm package $NGINX_INGRESS_DIR -d $OUTPUT_DIR
+
+                echo "Helm charts packaged successfully."
+                ls -la $OUTPUT_DIR
+
+
+          # Step: Push Helm Charts to ACR
+          - task: AzureCLI@2
+            displayName: "Push Helm Charts to ACR"
+            env:
+              JSON_OUTPUT_PATH: $(tfOutput.jsonOutputVariablesPath)  # Path from Terraform output task
+            inputs:
+              azureSubscription: ${{ parameters.azureServiceConnection }}
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                OUTPUT_DIR=$(System.DefaultWorkingDirectory)/helm_output
+
+                # Extract ACR name from Terraform outputs
+                ACR_NAME=$(jq -r '.acr_name.value' "$JSON_OUTPUT_PATH")
+                ACR_LOGIN_SERVER="${ACR_NAME}.azurecr.io"
+
+                echo "Getting an ACR access token..."
+                export ACCESS_TOKEN=$(az acr login --name $ACR_NAME --expose-token --query accessToken -o tsv)
+
+                echo "Logging into ACR using Helm registry login..."
+                echo $ACCESS_TOKEN | helm registry login $ACR_LOGIN_SERVER --username 00000000-0000-0000-0000-000000000000 --password-stdin
+                echo "Pushing Helm charts to ACR..."
+                
+                for chart in $OUTPUT_DIR/*.tgz; do
+                  echo "Pushing chart: $chart"
+                  helm push $chart oci://$ACR_LOGIN_SERVER
+                  
+                  if [ $? -ne 0 ]; then
+                    echo "Error: Failed to push chart: $chart"
+                    exit 1  # Exit the task with a failure if `helm push` fails
+                  fi
+                done
+
+                echo "Helm charts pushed successfully."
+                unset ACCESS_TOKEN  # Clear the token from the environment after use
+
+          # Step: Install 'pre-reqs' Helm Chart
+          - task: AzureCLI@2
+            displayName: "Install pre-reqs Helm Chart"
+            env:
+              JSON_OUTPUT_PATH: $(tfOutput.jsonOutputVariablesPath)
+            inputs:
+              azureSubscription: ${{ parameters.azureServiceConnection }}
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                # Extract keyVault.name from Terraform outputs
+                KEYVAULT_NAME=$(jq -r '.kv_name.value' "$JSON_OUTPUT_PATH")
+
+                # ACR login details
+                ACR_NAME=$(jq -r '.acr_name.value' "$JSON_OUTPUT_PATH")
+                ACR_LOGIN_SERVER="${ACR_NAME}.azurecr.io"
+
+                # Authenticate to ACR
+                echo "Authenticating Helm to ACR: $ACR_LOGIN_SERVER"
+                export ACCESS_TOKEN=$(az acr login --name $ACR_NAME --expose-token --query accessToken -o tsv)
+                echo $ACCESS_TOKEN | helm registry login $ACR_LOGIN_SERVER --username 00000000-0000-0000-0000-000000000000 --password-stdin
+
+                # Helm chart details
+                RELEASE_NAME="prereqs"
+                CHART_URI="oci://$ACR_LOGIN_SERVER/pre-reqs"
+                VERSION="0.1.0"
+
+                # Check if the release exists with the given version
+                echo "Checking if Helm release '$RELEASE_NAME' version '$VERSION' exists..."
+                if helm list --filter "^$RELEASE_NAME\$" | grep -q $RELEASE_NAME; then
+                  INSTALLED_VERSION=$(helm ls --all-namespaces -o json | jq -r --arg name "$RELEASE_NAME" '.[] | select(.name == $name) | .chart' | awk -F- '{print $NF}')
+                  if [ "$INSTALLED_VERSION" == "$VERSION" ]; then
+                    echo "Helm release '$RELEASE_NAME' version '$VERSION' is already installed. Skipping."
+                    exit 0
+                  fi
+                fi
+
+                # Install the chart
+                echo "Installing Helm chart '$CHART_URI' with release name '$RELEASE_NAME'..."
+                helm install $RELEASE_NAME $CHART_URI --version $VERSION --set keyVault.name=$KEYVAULT_NAME
+
+          # Step: Install 'nginx-ingress' Helm Chart
+          - task: AzureCLI@2
+            displayName: "Install nginx-ingress Helm Chart"
+            env:
+              JSON_OUTPUT_PATH: $(tfOutput.jsonOutputVariablesPath)
+            inputs:
+              azureSubscription: ${{ parameters.azureServiceConnection }}
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                # ACR login details
+                ACR_NAME=$(jq -r '.acr_name.value' "$JSON_OUTPUT_PATH")
+                ACR_LOGIN_SERVER="${ACR_NAME}.azurecr.io"
+
+                # Authenticate to ACR
+                echo "Authenticating Helm to ACR: $ACR_LOGIN_SERVER"
+                export ACCESS_TOKEN=$(az acr login --name $ACR_NAME --expose-token --query accessToken -o tsv)
+                echo $ACCESS_TOKEN | helm registry login $ACR_LOGIN_SERVER --username 00000000-0000-0000-0000-000000000000 --password-stdin
+
+                # Helm chart details
+                RELEASE_NAME="amanoilovx"
+                CHART_URI="oci://$ACR_LOGIN_SERVER/nginx-ingress"
+                VERSION="0.1.0"
+
+                # Check if the release exists with the given version
+                echo "Checking if Helm release '$RELEASE_NAME' version '$VERSION' exists..."
+                if helm list --filter "^$RELEASE_NAME\$" | grep -q $RELEASE_NAME; then
+                  INSTALLED_VERSION=$(helm ls --all-namespaces -o json | jq -r --arg name "$RELEASE_NAME" '.[] | select(.name == $name) | .chart' | awk -F- '{print $NF}')
+                  if [ "$INSTALLED_VERSION" == "$VERSION" ]; then
+                    echo "Helm release '$RELEASE_NAME' version '$VERSION' is already installed. Skipping."
+                    exit 0
+                  fi
+                fi
+
+                # Install the chart
+                echo "Installing Helm chart '$CHART_URI' with release name '$RELEASE_NAME'..."
+                helm install $RELEASE_NAME $CHART_URI --version $VERSION
