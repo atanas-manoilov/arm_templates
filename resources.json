@@ -31,6 +31,13 @@
       }
     }
   },
+  "variables": {
+    "additionalObjectIds": [
+      "c0cd7fd7-bd4b-4ecc-a059-a03b3994761f",
+      "019bb3b3-c281-4fc1-87f7-df6974d55f91",
+      "019bb3b3-c281-4fc1-87f7-df6974d55f91"
+    ]
+  },
   "resources": [
     {
       "type": "Microsoft.Resources/deployments",
@@ -116,6 +123,27 @@
           },
           "principalId": {
             "value": "[reference(resourceId(subscription().subscriptionId, parameters('aksResourceGroupName'), 'Microsoft.Resources/deployments', 'aksDeployment'), '2024-03-01').outputs.kubeletUAMIObjectId.value]"
+          }
+        }
+      }
+    },
+        {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2024-03-01",
+      "name": "KV_policy_assignment",
+      "resourceGroup": "[parameters('kvResourceGroupName')]",
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "https://raw.githubusercontent.com/atanas-manoilov/arm_templates/refs/heads/main/ACR_role_assignment.json",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "keyVaultResourceId": {
+            "value": "[reference(resourceId(subscription().subscriptionId, parameters('kvResourceGroupName'), 'Microsoft.Resources/deployments', 'kvDeployment'), '2024-03-01').outputs.keyVaultResourceId.value]"
+          },
+          "customObjectIds": {
+            "value": "[union(variables('additionalObjectIds'), array(reference(resourceId(subscription().subscriptionId, parameters('aksResourceGroupName'), 'Microsoft.Resources/deployments', 'aksDeployment'), '2024-03-01').outputs.kubeletUAMIObjectId.value))]"
           }
         }
       }

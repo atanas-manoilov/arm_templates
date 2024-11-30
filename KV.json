@@ -155,13 +155,15 @@
         ]
       }
     }
-
-
   ],
   "outputs": {
     "kvName": {
       "type": "string",
       "value": "[variables('keyVaultNameWithSuffix')]"
+    },
+    "keyVaultResourceId": {
+        "type": "string",
+        "value": "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultNameWithSuffix'))]"
     }
   }
 }
