@@ -49,7 +49,7 @@ stages:
                 echo "jq installation complete. Version:"
                 jq --version
 
-          # Step: Deploy Resource Groups
+          # Step: Deploy RGs with ARM
           - task: AzureCLI@2
             displayName: "Deploy Resource Groups"
             inputs:
@@ -59,7 +59,7 @@ stages:
               inlineScript: |
                 az deployment sub create --location westus2 --template-file "$(System.DefaultWorkingDirectory)/rg.json"
 
-          # Step: Deploy Resources
+          # Step: Deploy Resources with ARM
           - task: AzureCLI@2
             displayName: "Deploy Resources"
             inputs:
@@ -69,7 +69,7 @@ stages:
               inlineScript: |
                 az deployment sub create --location westus2 --template-file "$(System.DefaultWorkingDirectory)/resources.json"
 
-          # Step: Capture Outputs
+          # Step: Capture Outputs JSON
           - task: AzureCLI@2
             displayName: "Capture Outputs"
             inputs:
@@ -77,8 +77,9 @@ stages:
               scriptType: bash
               scriptLocation: inlineScript
               inlineScript: |
-                az deployment sub show -n resources --query "properties.outputs" -o json > outputs.json
-                echo "##vso[task.setvariable variable=deploymentOutputs;isOutput=true]$(cat outputs.json)"
+                OUTPUT_FILE="$(System.DefaultWorkingDirectory)/outputs.json"
+                az deployment sub show -n resources --query "properties.outputs" -o json > "$OUTPUT_FILE"
+                echo "##vso[task.setvariable variable=deploymentOutputs;isOutput=true]$OUTPUT_FILE"
 
           # Step: Download SSL Certificate
           - task: DownloadSecureFile@1
