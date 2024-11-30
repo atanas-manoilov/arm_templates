@@ -87,15 +87,6 @@ stages:
                   exit 1
                 fi
 
-                # Set pipeline variable to the absolute file path
-                echo "##vso[task.setvariable variable=deploymentOutputs;isOutput=true]${OUTPUT_FILE}"
-
-          - script: |
-              echo "Value of deploymentOutputs: $(deploymentOutputs)"
-              ls $(deploymentOutputs) || echo "File not found at $(deploymentOutputs)"
-            displayName: "Debug deploymentOutputs"
-
-
           # Step: Download SSL Certificate
           - task: DownloadSecureFile@1
             displayName: "Download SSL Certificate"
@@ -107,7 +98,7 @@ stages:
             displayName: "Import Cert to Key Vault"
             env:
               CERT_PASSWORD: $(certPassword)  # Map the secret variable as an environment variable
-              JSON_OUTPUT_PATH: $(deploymentOutputs)  
+              JSON_OUTPUT_PATH: $(System.DefaultWorkingDirectory)/outputs.json  
             inputs:
               azureSubscription: ${{ parameters.azureServiceConnection }}
               scriptType: bash
@@ -147,7 +138,7 @@ stages:
           - task: AzureCLI@2
             displayName: "Retrieve AKS Credentials"
             env:
-              JSON_OUTPUT_PATH: $(deploymentOutputs)
+              JSON_OUTPUT_PATH: $(System.DefaultWorkingDirectory)/outputs.json
             inputs:
               azureSubscription: ${{ parameters.azureServiceConnection }}
               scriptType: 'bash'
@@ -235,7 +226,7 @@ stages:
           - task: AzureCLI@2
             displayName: "Push Helm Charts to ACR"
             env:
-              JSON_OUTPUT_PATH: $(deploymentOutputs)  
+              JSON_OUTPUT_PATH: $(System.DefaultWorkingDirectory)/outputs.json  
             inputs:
               azureSubscription: ${{ parameters.azureServiceConnection }}
               scriptType: bash
@@ -271,7 +262,7 @@ stages:
           - task: AzureCLI@2
             displayName: "Install pre-reqs Helm Chart"
             env:
-              JSON_OUTPUT_PATH: $(deploymentOutputs)
+              JSON_OUTPUT_PATH: $(System.DefaultWorkingDirectory)/outputs.json
             inputs:
               azureSubscription: ${{ parameters.azureServiceConnection }}
               scriptType: bash
@@ -312,7 +303,7 @@ stages:
           - task: AzureCLI@2
             displayName: "Install nginx-ingress Helm Chart"
             env:
-              JSON_OUTPUT_PATH: $(deploymentOutputs)
+              JSON_OUTPUT_PATH: $(System.DefaultWorkingDirectory)/outputs.json
             inputs:
               azureSubscription: ${{ parameters.azureServiceConnection }}
               scriptType: bash
