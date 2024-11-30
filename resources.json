@@ -157,19 +157,19 @@
     }
   ],
   "outputs": {
-    "aksClusterName": {
+    "aks_cluster_name": {
       "type": "string",
       "value": "[reference(resourceId(subscription().subscriptionId, parameters('aksResourceGroupName'), 'Microsoft.Resources/deployments', 'aksDeployment'), '2024-03-01').outputs.aksClusterName.value]"
     },
-    "aksClusterResourceGroup": {
+    "aks_resource_group": {
       "type": "string",
       "value": "[reference(resourceId(subscription().subscriptionId, parameters('aksResourceGroupName'), 'Microsoft.Resources/deployments', 'aksDeployment'), '2024-03-01').outputs.aksClusterResourceGroup.value]"
     },
-    "kvName": {
+    "kv_name": {
       "type": "string",
       "value": "[reference(resourceId(subscription().subscriptionId, parameters('kvResourceGroupName'), 'Microsoft.Resources/deployments', 'kvDeployment'), '2024-03-01').outputs.kvName.value]"
     },
-    "acrName": {
+    "acr_name": {
       "type": "string",
       "value": "[reference(resourceId(subscription().subscriptionId, parameters('acrResourceGroupName'), 'Microsoft.Resources/deployments', 'acrDeployment'), '2024-03-01').outputs.acrName.value]"
     }
