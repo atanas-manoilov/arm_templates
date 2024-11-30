@@ -51,7 +51,7 @@ stages:
 
           # Step: Deploy RGs with ARM
           - task: AzureCLI@2
-            displayName: "Deploy Resource Groups"
+            displayName: "Deploy RGs with ARM"
             inputs:
               azureSubscription: ${{ parameters.azureServiceConnection }}
               scriptType: bash
@@ -61,7 +61,7 @@ stages:
 
           # Step: Deploy Resources with ARM
           - task: AzureCLI@2
-            displayName: "Deploy Resources"
+            displayName: "Deploy Resources with ARM"
             inputs:
               azureSubscription: ${{ parameters.azureServiceConnection }}
               scriptType: bash
@@ -71,7 +71,7 @@ stages:
 
           # Step: Capture Outputs JSON
           - task: AzureCLI@2
-            displayName: "Capture Outputs"
+            displayName: "Capture Outputs JSON  "
             inputs:
               azureSubscription: ${{ parameters.azureServiceConnection }}
               scriptType: bash
@@ -80,6 +80,12 @@ stages:
                 OUTPUT_FILE="$(System.DefaultWorkingDirectory)/outputs.json"
                 az deployment sub show -n resources --query "properties.outputs" -o json > "$OUTPUT_FILE"
                 echo "##vso[task.setvariable variable=deploymentOutputs;isOutput=true]$OUTPUT_FILE"
+
+          - script: |
+              echo "Value of deploymentOutputs: $(deploymentOutputs)"
+              ls $(deploymentOutputs) || echo "File not found at $(deploymentOutputs)"
+            displayName: "Debug deploymentOutputs"
+
 
           # Step: Download SSL Certificate
           - task: DownloadSecureFile@1
