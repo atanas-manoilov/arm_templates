@@ -55,8 +55,8 @@
         },
         "tenantId": "[parameters('tenantId')]",
         "accessPolicies": [],
-        "enablePurgeProtection": true,
-        "enableSoftDelete": true,
+        "enablePurgeProtection": false,
+        "enableSoftDelete": false,
         "networkAcls": {
           "defaultAction": "Deny",
           "bypass": "None",
