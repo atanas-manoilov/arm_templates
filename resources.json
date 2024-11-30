@@ -127,7 +127,7 @@
         }
       }
     },
-        {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2024-03-01",
       "name": "KV_policy_assignment",
@@ -135,7 +135,7 @@
       "properties": {
         "mode": "Incremental",
         "templateLink": {
-          "uri": "https://raw.githubusercontent.com/atanas-manoilov/arm_templates/refs/heads/main/ACR_role_assignment.json",
+          "uri": "https://raw.githubusercontent.com/atanas-manoilov/arm_templates/refs/heads/main/KV_access_policies.json",
           "contentVersion": "1.0.0.0"
         },
         "parameters": {
