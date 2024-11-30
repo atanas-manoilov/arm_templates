@@ -2,6 +2,10 @@
   "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
+    "KeyVaultName": {
+      "defaultValue": "am-kv",
+      "type": "string"
+    },
     "vnetResourceGroupName": {
       "type": "string",
       "defaultValue": "my_vnet_rg",
@@ -84,6 +88,9 @@
           },
           "vnetID": {
             "value": "[reference(resourceId(subscription().subscriptionId, parameters('vnetResourceGroupName'), 'Microsoft.Resources/deployments', 'vnetDeployment'), '2021-04-01').outputs.vnetId.value]"
+          },
+          "KeyVaultName": {
+            "value": "[parameters('KeyVaultName')]"
           }
         }
       }
