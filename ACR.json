@@ -4,7 +4,7 @@
   "parameters": {
     "ACR_name": {
       "type": "String",
-      "defaultValue": "amanilov02103",
+      "defaultValue": "amanilov021",
       "metadata": {
         "description": "Name of the Azure Container Registry."
       }

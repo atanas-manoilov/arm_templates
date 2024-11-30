@@ -14,8 +14,8 @@
       { "value": "89.102.176.88" }
     ]
   },
-    "keyVaultName": {
-      "defaultValue": "amanoilov-kv3",
+    "baseKeyVaultName": {
+      "defaultValue": "am-kv",
       "type": "string"
     },
     "location": {
@@ -32,7 +32,7 @@
     },
     "tenantId": {
       "type": "string",
-      "defaultValue": "830c9ea6-1c8e-411c-8bf0-f519b37fd808"
+      "defaultValue": "f985b02a-13bf-4b1e-88e7-d4ce214ad1b1"
     },
     "dnsLinkName": {
       "type": "string",
@@ -41,13 +41,24 @@
     "environment": {
       "type": "string",
       "defaultValue": "production"
+    },
+    "currentDateTime": {
+      "type": "string",
+      "defaultValue": "[utcNow()]",
+      "metadata": {
+        "description": "Current timestamp for generating unique names."
+      }
     }
+  },
+  "variables": {
+    "dateTimeFormatted": "[concat(substring(replace(parameters('currentDateTime'), '-', ''), 0, 8), substring(replace(parameters('currentDateTime'), ':', ''), 9, 6))]",
+    "keyVaultNameWithSuffix": "[concat(parameters('baseKeyVaultName'), '-', variables('dateTimeFormatted'))]"
   },
   "resources": [
     {
       "type": "Microsoft.KeyVault/vaults",
       "apiVersion": "2022-07-01",
-      "name": "[parameters('keyVaultName')]",
+      "name": "[variables('keyVaultNameWithSuffix')]",
       "location": "[parameters('location')]",
       "properties": {
         "sku": {
@@ -76,9 +87,9 @@
     {
       "type": "Microsoft.Network/privateEndpoints",
       "apiVersion": "2021-03-01",
-      "name": "[concat(parameters('keyVaultName'), '-pe')]",
+      "name": "[concat(variables('keyVaultNameWithSuffix'), '-pe')]",
       "dependsOn": [
-        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+        "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultNameWithSuffix'))]"
       ],
       "location": "[parameters('location')]",
       "properties": {
@@ -87,9 +98,9 @@
         },
         "privateLinkServiceConnections": [
           {
-            "name": "[concat(parameters('keyVaultName'), '-connection')]",
+            "name": "[concat(variables('keyVaultNameWithSuffix'), '-connection')]",
             "properties": {
-              "privateLinkServiceId": "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
+              "privateLinkServiceId": "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultNameWithSuffix'))]",
               "groupIds": ["vault"],
               "requestMessage": "Auto-Approved"
             }
@@ -128,9 +139,9 @@
     {
       "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
       "apiVersion": "2023-11-01",
-      "name": "[concat(parameters('keyVaultName'), '-pe/keyvault-dns-zone-group')]",
+      "name": "[concat(variables('keyVaultNameWithSuffix'), '-pe/keyvault-dns-zone-group')]",
       "dependsOn": [
-        "[resourceId('Microsoft.Network/privateEndpoints', concat(parameters('keyVaultName'), '-pe'))]",
+        "[resourceId('Microsoft.Network/privateEndpoints', concat(variables('keyVaultNameWithSuffix'), '-pe'))]",
         "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.vaultcore.azure.net')]"
       ],
       "properties": {
@@ -146,5 +157,11 @@
     }
 
 
-  ]
+  ],
+  "outputs": {
+    "kvName": {
+      "type": "string",
+      "value": "[variables('keyVaultNameWithSuffix')]"
+    }
+  }
 }

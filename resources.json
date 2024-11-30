@@ -125,6 +125,10 @@
     "aksClusterName": {
       "type": "string",
       "value": "[reference(resourceId(subscription().subscriptionId, parameters('aksResourceGroupName'), 'Microsoft.Resources/deployments', 'aksDeployment'), '2024-03-01').outputs.aksClusterName.value]"
+    },
+    "kvName": {
+      "type": "string",
+      "value": "[reference(resourceId(subscription().subscriptionId, parameters('kvResourceGroupName'), 'Microsoft.Resources/deployments', 'kvDeployment'), '2024-03-01').outputs.kvName.value]"
     }
   }
 }
